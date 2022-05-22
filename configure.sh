@@ -30,6 +30,12 @@ CROSS_COMPILE=
 DESTDIR=/
 ## headers and other files to check
 CHECK_HEADERS=
+## packages
+CHECK_PACKAGES=
+## header path
+HEADER_PATH=/usr/include/
+## system root
+SYSROOT=/
 
 # for config stuff
 touch "config.source"
@@ -99,15 +105,47 @@ while [ "$arg" != "" ]; do
 		unset useless
 	fi
 	
+	# system root
+	if [ "$arg" == "-sysroot" ]; then
+		shift
+		arg=$1
+		
+		if [ "$arg" == "" ]; then
+			echo $0: unspecified value for system root
+			exit 1
+		fi
+		
+		# config.source
+		useless=$(echo "SYSROOT=$arg" | tee -a "config.source")
+		unset useless
+	fi
+	
+	# header path
+	if [ "$arg" == "-headers" ]; then
+		shift
+		arg=$1
+		
+		if [ "$arg" == "" ]; then
+			echo $0: unspecified value for header path
+			exit 1
+		fi
+		
+		# config.source
+		useless=$(echo "HEADER_PATH=$arg" | tee -a "config.source")
+		unset useless
+	fi
+	
 	# help
 	if [ "$arg" == "-help" ]; then
 	
 		echo usage: $0 [options]
-		echo -e \\t-cc\\tspecify C compiler \(i.e. gcc\)
-		echo -e \\t-cxx\\tspecify C++ compiler \(i.e. g++\)
-		echo -e \\t-cross\\tspecify cross compilation prefix \(i.e. x86_64-linux-gnu-\)
-		echo -e \\t-prefix\\tspecify installation prefix \(i.e /usr\)
-		echo -e \\t-help\\tdisplay this help message
+		echo -e \\t-cc\\t\\tspecify C compiler \(i.e. gcc\)
+		echo -e \\t-cxx\\t\\tspecify C++ compiler \(i.e. g++\)
+		echo -e \\t-cross\\t\\tspecify cross compilation prefix \(i.e. x86_64-linux-gnu-\)
+		echo -e \\t-headers\\tspecify header path \(i.e. /usr/include\)
+		echo -e \\t-prefix\\t\\tspecify installation prefix \(i.e /usr\)
+		echo -e \\t-sysroot\\t\\tspecify the system root directory \(i.e. /\)
+		echo -e \\t-help\\t\\tdisplay this help message
 		echo
 		exit 0
 	fi
@@ -124,12 +162,13 @@ source "config.source" 1>/dev/null 2>/dev/null
 CC="$CROSS_COMPILE$CC"
 CXX="$CROSS_COMPILE$CXX"
 
+# generate c and c++ test files
 echo 'int main(int argc, char **argv) { printf("%s okay\n", argv[1]); }' > "conf.test.c"
 echo -e '#include <iostream>\nint main(int argc, char **argv) { cout << argv[1] << " okay" << endl; }' > "conf.test.cpp"
 
 # print info
 echo "C compiler is $CC"
-echo "C++ compiler is $CXX"
+if [ "$TESTCXX" == "YES" ]; then echo "C++ compiler is $CXX"; fi
 
 # test c compiler
 echo -n "testing C compiler... "
@@ -195,11 +234,12 @@ if [ "$CHECK_HEADERS" != "" ]; then
 		echo -n "looking for $header... "
 		
 		# stat file
-		stat /usr/include/$header 1>/dev/null 2>/dev/null
+		stat "$SYSROOT/$HEADER_PATH/$header" 1>/dev/null 2>/dev/null
 		
 		# error
 		if [ $? -ne 0 ]; then
-	
+			
+			rm config.source
 			echo not found
 			exit 1
 		else
@@ -209,9 +249,30 @@ if [ "$CHECK_HEADERS" != "" ]; then
 	done
 fi
 
+# search for pkg-config files
+if [ "$CHECK_PACKAGES" != "" ]; then
+	for pkg in $CHECK_PACKAGES; do
+		
+		# get package state
+		echo -n "looking for package $pkg... "
+		pkg-config --exists $pkg
+		
+		# error
+		if [ $? -ne 0 ]; then
+
+			rm config.source
+			echo not found
+			exit 1
+		else
+
+			echo found
+		fi
+	done
+fi
+
 # generate makefile
 echo -n "generating Makefile... "
-cp Makefile.orig Makefile
+cp Makefile.make Makefile
 
 sed -i -- "s#_configure_CC#$CC#g" Makefile
 sed -i -- "s#_configure_CXX#$CXX#g" Makefile

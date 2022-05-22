@@ -5,7 +5,7 @@ A simple configuration script for C programs, inspired by automake.
 Use ```./configure.sh``` to run the script.
 
 ### Makefiles
-You can make a Makefile titled ```Makefile.orig```. This will be the Makefile that ```configure.sh``` will use. It will replace anything with for example ```_configure_CC``` with your chosen C compiler. Here is an example ```Makefile.orig```:
+You can make a Makefile titled ```Makefile.make```. This will be the Makefile that ```configure.sh``` will use. It will replace anything with for example ```_configure_CC``` with your chosen C compiler. Here is an example ```Makefile.orig```:
 
 ```
 CC=_configure_CC
@@ -42,5 +42,6 @@ CC=gcc # C compiler
 CXX=clang++ # C++ compiler
 CROSS_COMPILE=i686-linux-unknown- # cross compiler
 CHECK_HEADERS="stdio.h stdlib.h" # check for the existance of these headers
+CHECK_PACKAGES="example another-example" # check for the existance of these pkg-config files
 DESTDIR=/usr # installation prefix
 ```
